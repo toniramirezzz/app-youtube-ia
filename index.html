@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <!-- PWA Meta Tags para iPhone / iOS Safari -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Creator Hub">
+  <link rel="apple-touch-icon" href="https://placehold.co/180x180/06080F/3B82F6?text=AI">
+  <meta name="theme-color" content="#06080F">
+  
+  <!-- Manifest mínimo incrustado para instalación PWA completa -->
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22AI%20Creator%20Hub%22%2C%22short_name%22%3A%22Creator%20Hub%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2306080F%22%2C%22theme_color%22%3A%22%2306080F%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fplacehold.co%2F192x192%2F06080F%2F3B82F6%3Ftext%3DAI%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fplacehold.co%2F512x512%2F06080F%2F3B82F6%3Ftext%3DAI%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
+
+  <title>AI CREATOR HUB — One Platform. All Channels. Total Control.</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #06080F; color: #F1F5F9; -webkit-tap-highlight-color: transparent; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #090C14; }
+    ::-webkit-scrollbar-thumb { background: #1E2235; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    
+    /* PWA env safe-areas para iPhone con Notch/Dynamic Island */
+    .safe-pt { padding-top: env(safe-area-inset-top, 0px); }
+    .safe-pb { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  </style>
+</head>
+<body class="min-h-screen bg-[#06080F] text-slate-100 antialiased selection:bg-blue-500/30">
+
+  <!-- TOAST -->
+  <div id="toast" class="fixed top-safe mt-4 right-5 z-[100] hidden items-center gap-2.5 px-4 py-3 rounded-xl bg-[#141826]/95 backdrop-blur border border-blue-500/40 text-xs font-medium text-white shadow-2xl transition-all">
+    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+    <span id="toast-text"></span>
+  </div>
+
+  <!-- ======================================================================
+       PANTALLA DE LOGIN
+       ====================================================================== -->
+  <div id="login-screen" class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden safe-pb">
+    <div class="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/20 rounded-full blur-[130px] pointer-events-none"></div>
+    <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-violet-600/20 rounded-full blur-[130px] pointer-events-none"></div>
+
+    <div class="w-full max-w-md z-10">
+      <div class="text-center mb-7">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-500/25 mb-3">
+          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+        </div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-white">AI CREATOR HUB</h1>
+        <p class="text-[11px] uppercase tracking-[0.2em] text-blue-400 font-semibold mt-1">One Platform. All Channels. Total Control.</p>
+      </div>
+
+      <div class="bg-[#0D111C]/95 backdrop-blur-xl border border-[#1E2235] rounded-2xl p-6 sm:p-8 shadow-2xl space-y-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white">Acceso de Socios</h2>
+            <p class="text-xs text-slate-400">Escoge tu perfil para entrar</p>
+          </div>
+          <span class="text-[11px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Local PWA</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-2">1. Selecciona tu perfil</label>
+          <div id="partner-selector" class="grid grid-cols-3 gap-2.5"></div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-xs font-medium text-slate-300">2. Contraseña</label>
+            <button type="button" onclick="fillDefaultPass()" class="text-[11px] text-blue-400 hover:text-blue-300 cursor-pointer">Rellenar Default</button>
+          </div>
+          <div class="relative">
+            <input id="login-password" type="password" placeholder="Admin 1234" onkeydown="if(event.key==='Enter') handleLogin()" class="w-full bg-[#06080F] border border-[#1E2235] focus:border-blue-500 rounded-xl pl-3.5 pr-16 py-2.5 text-sm text-white placeholder-slate-600 outline-none" />
+            <button type="button" onclick="togglePassVisibility()" id="toggle-pass-btn" class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 hover:text-white cursor-pointer">Ver</button>
+          </div>
+        </div>
+
+        <div id="login-error" class="hidden p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs"></div>
+
+        <div class="space-y-2.5">
+          <button type="button" id="btn-login-submit" onclick="handleLogin()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-semibold text-sm shadow-lg shadow-blue-600/25 transition cursor-pointer">
+            Iniciar Sesión
+          </button>
+          <button type="button" id="btn-login-quick" onclick="quickLogin()" class="w-full py-2 px-4 rounded-xl bg-[#151928] hover:bg-[#1D2236] border border-[#262C44] text-slate-200 font-medium text-xs transition cursor-pointer">
+            Entrar directo en 1 clic
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       APLICACIÓN PRINCIPAL
+       ====================================================================== -->
+  <div id="app-shell" class="hidden min-h-screen flex flex-col lg:flex-row w-full">
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-[#0A0D16] border-r border-[#1E2235] flex flex-col transform -translate-x-full lg:translate-x-0 lg:static transition-transform duration-200 safe-pt pb-safe">
+      <div class="h-16 px-5 flex items-center justify-between border-b border-[#1E2235] mt-safe">
+        <div onclick="navigate('dashboard')" class="flex items-center gap-2.5 cursor-pointer">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center font-bold text-white text-xs shadow-md shadow-blue-500/20">AI</div>
+          <div>
+            <span class="font-bold text-sm text-white block leading-none">CREATOR HUB</span>
+            <span class="text-[10px] text-slate-400">PWA IOS EDITION</span>
+          </div>
+        </div>
+        <button onclick="toggleSidebar(false)" class="lg:hidden text-slate-400 hover:text-white p-2">✕</button>
+      </div>
+
+      <nav id="nav-menu" class="flex-1 overflow-y-auto py-4 px-3 space-y-1"></nav>
+
+      <div class="p-3 border-t border-[#1E2235] bg-[#080A11] safe-pb">
+        <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#0D111C] border border-[#1E2235]">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div id="sidebar-avatar" class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shrink-0">AR</div>
+            <div class="truncate">
+              <p id="sidebar-name" class="text-xs font-semibold text-white truncate">Arnau</p>
+              <p id="sidebar-role" class="text-[10px] text-slate-400 truncate">Admin Principal</p>
+            </div>
+          </div>
+          <button onclick="logout()" class="p-2 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs cursor-pointer">🚪</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Fondo oscurecido para sidebar en móvil -->
+    <div id="sidebar-overlay" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden backdrop-blur-sm"></div>
+
+    <!-- MAIN CONTENT -->
+    <div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+      <header class="h-16 shrink-0 bg-[#090C14]/90 backdrop-blur-md border-b border-[#1E2235] px-4 flex items-center justify-between z-20 safe-pt">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleSidebar(true)" class="lg:hidden p-2 -ml-2 rounded-lg text-slate-300">☰</button>
+          <h1 id="header-welcome" class="text-sm font-bold text-white truncate">Bienvenido</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="navigate('notifications')" class="p-2 rounded-xl bg-[#0D111C] border border-[#1E2235] text-slate-300 relative cursor-pointer">
+            🔔 <span id="notif-badge" class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-bold hidden">0</span>
+          </button>
+        </div>
+      </header>
+
+      <main id="main-content" class="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6 pb-24 safe-pb w-full max-w-5xl mx-auto"></main>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       MODALES
+       ====================================================================== -->
+  <!-- Modal Conectar Canal -->
+  <div id="modal-channel" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md items-center justify-center p-4">
+    <div class="bg-[#0D111C] border border-[#1E2235] rounded-2xl max-w-sm w-full p-6 shadow-2xl flex flex-col gap-4">
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 class="text-base font-bold text-white">Conectar Canal (OAuth)</h3>
+          <p class="text-xs text-slate-400 mt-1">Conecta de forma segura a través de la API oficial de Google.</p>
+        </div>
+        <button onclick="closeModal('modal-channel')" class="text-slate-400 p-1">✕</button>
+      </div>
+      
+      <div class="p-4 rounded-xl border border-[#1E2235] bg-[#06080F] flex flex-col items-center justify-center text-center gap-3">
+        <svg class="w-10 h-10 text-rose-500" viewBox="0 0 24 24" fill="currentColor"><path d="M21.582,6.186c-0.23-0.86-0.908-1.538-1.768-1.768C18.254,4,12,4,12,4S5.746,4,4.186,4.418c-0.86,0.23-1.538,0.908-1.768,1.768 C2,7.746,2,12,2,12s0,4.254,0.418,5.814c0.23,0.86,0.908,1.538,1.768,1.768C5.746,20,12,20,12,20s6.254,0,7.814-0.418 c0.86-0.23,1.538-0.908,1.768-1.768C22,16.254,22,12,22,12S22,7.746,21.582,6.186z M9.996,15.005l0.005-6l5.207,3.005L9.996,15.005z"/></svg>
+        <p class="text-xs text-slate-300">Al conectar vía OAuth, obtendremos métricas en tiempo real (cada 3-5 mins) de YouTube Analytics.</p>
+        <button onclick="simulateOAuthConnect()" class="w-full py-2.5 rounded-xl bg-white text-black text-sm font-bold shadow flex items-center justify-center gap-2 cursor-pointer">
+          <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Conectar con Google
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Programar Vídeo -->
+  <div id="modal-upload" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md items-center justify-center p-4">
+    <div class="bg-[#0D111C] border border-[#1E2235] rounded-2xl max-w-sm w-full p-5 flex flex-col gap-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="text-base font-bold text-white">Programar Vídeo (Auto-Upload)</h3>
+        <button onclick="closeModal('modal-upload')" class="text-slate-400 p-1">✕</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 mb-1">Seleccionar Canal</label>
+          <select id="up-channel" class="w-full bg-[#06080F] border border-[#1E2235] rounded-xl px-3 py-2 text-white outline-none"></select>
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1">Archivo de Vídeo</label>
+          <input type="file" accept="video/*" class="w-full text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#1A1E2E] file:text-white hover:file:bg-blue-600 cursor-pointer" />
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1">Título del Vídeo</label>
+          <input id="up-title" type="text" placeholder="Ej: Curiosidades del espacio..." class="w-full bg-[#06080F] border border-[#1E2235] rounded-xl px-3 py-2 text-white outline-none" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 mb-1">Fecha de publicación</label>
+            <input id="up-date" type="date" class="w-full bg-[#06080F] border border-[#1E2235] rounded-xl px-3 py-2 text-white outline-none" />
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1">Hora</label>
+            <input id="up-time" type="time" value="18:00" class="w-full bg-[#06080F] border border-[#1E2235] rounded-xl px-3 py-2 text-white outline-none" />
+          </div>
+        </div>
+        <button onclick="scheduleVideo()" class="w-full mt-2 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white font-bold shadow-lg cursor-pointer">
+          Dejar Programado
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Conectar Banco -->
+  <div id="modal-bank" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md items-center justify-center p-4">
+    <div class="bg-[#0D111C] border border-[#1E2235] rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4">
+      <div class="w-12 h-12 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center text-xl">🏦</div>
+      <h3 class="text-base font-bold text-white">Conexión Bancaria Segura</h3>
+      <p class="text-xs text-slate-400">Sincroniza tus cuentas mediante Plaid o Tink para importar ingresos de AdSense y gastos automáticamente.</p>
+      <div class="pt-4 flex flex-col gap-2">
+        <button onclick="simulateBankConnect()" class="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold cursor-pointer">Conectar Institución Bancaria</button>
+        <button onclick="closeModal('modal-bank')" class="w-full py-2.5 rounded-xl bg-transparent text-slate-400 text-sm cursor-pointer hover:text-white">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       LÓGICA DE APLICACIÓN
+       ====================================================================== -->
+  <script>
+    // Utilidades
+    function sha256(ascii) {
+      function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
+      var mathPow = Math.pow, maxWord = mathPow(2, 32), i, j, result = '';
+      var words = [], asciiBitLength = ascii.length * 8;
+      var hash = [], k = [], primeCounter = 0, isComposite = {};
+      for (var candidate = 2; primeCounter < 64; candidate++) {
+        if (!isComposite[candidate]) {
+          for (i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+          hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
+          k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+        }
+      }
+      ascii += '\x80';
+      while (ascii.length % 64 - 56) ascii += '\x00';
+      for (i = 0; i < ascii.length; i++) {
+        j = ascii.charCodeAt(i);
+        words[i >> 2] |= j << ((3 - i) % 4) * 8;
+      }
+      words[words.length] = ((asciiBitLength / maxWord) | 0);
+      words[words.length] = (asciiBitLength);
+      for (j = 0; j < words.length;) {
+        var w = words.slice(j, j += 16), oldHash = hash.slice(0);
+        for (i = 0; i < 64; i++) {
+          var w15 = w[i - 15], w2 = w[i - 2], a = hash[0], e = hash[4];
+          var temp1 = hash[7] + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) + ((e & hash[5]) ^ ((~e) & hash[6])) + k[i] +
+            (w[i] = (i < 16) ? w[i] : (w[i - 16] + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) | 0);
+          var temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+          hash.unshift((temp1 + temp2) | 0);
+          hash[4] = (hash[4] + temp1) | 0;
+          hash.pop();
+        }
+        for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+      }
+      for (i = 0; i < 8; i++) {
+        for (j = 3; j + 1; j--) {
+          var b = (hash[i] >> (j * 8)) & 255;
+          result += ((b < 16) ? 0 : '') + b.toString(16);
+        }
+      }
+      return result;
+    }
+
+    const DEFAULT_HASH = sha256('Admin 1234');
+
+    // ESTADO INICIAL LIMPIO (SIN DATOS INVENTADOS)
+    const DEFAULT_STATE = {
+      currentUserId: null,
+      activeTab: 'dashboard',
+      selectedChannelId: null,
+      selectedLoginPartner: 'arnau',
+      bankConnected: false,
+      partners: [
+        { id: 'arnau', name: 'Arnau', role: 'Admin', avatar: 'AR', color: 'from-blue-500 to-indigo-600', equity: 33.33, paid: 0, passHash: DEFAULT_HASH },
+        { id: 'toni', name: 'Toni', role: 'Socio', avatar: 'TO', color: 'from-violet-500 to-purple-600', equity: 33.33, paid: 0, passHash: DEFAULT_HASH },
+        { id: 'alex', name: 'Alex', role: 'Socio', avatar: 'AL', color: 'from-emerald-500 to-teal-600', equity: 33.34, paid: 0, passHash: DEFAULT_HASH }
+      ],
+      channels: [],
+      videos: [],
+      subscriptions: [],
+      generalExpenses: [],
+      events: [],
+      accounts: [],
+      notifications: [],
+      activity: [],
+      aiReports: []
+    };
+
+    let state = loadState();
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem('AI_CREATOR_HUB_PWA_V3');
+        if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
+        return Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), JSON.parse(raw));
+      } catch (e) {
+        return JSON.parse(JSON.stringify(DEFAULT_STATE));
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem('AI_CREATOR_HUB_PWA_V3', JSON.stringify(state));
+      } catch (e) {}
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      document.getElementById('toast-text').textContent = msg;
+      el.classList.remove('hidden');
+      el.classList.add('flex');
+      setTimeout(() => { el.classList.add('hidden'); el.classList.remove('flex'); }, 3000);
+    }
+
+    function logAction(action, target) {
+      state.activity.unshift({
+        id: 'ac-' + Date.now(),
+        partnerId: state.currentUserId || 'arnau',
+        action,
+        target,
+        time: new Date().toLocaleString('es-ES', {hour: '2-digit', minute:'2-digit'})
+      });
+      saveState();
+    }
+
+    function pushNotification(title, msg) {
+      state.notifications.unshift({
+        id: 'n-' + Date.now(),
+        title, msg, time: 'Ahora mismo', read: false
+      });
+      saveState();
+      renderNav(); // Actualiza el badge
+      
+      // Notificación Nativa del Sistema (si los permisos fueron otorgados)
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(title, { body: msg, icon: 'https://placehold.co/192x192/06080F/3B82F6?text=AI' });
+      } else {
+        showToast(title); // Fallback a toast en app
+      }
+    }
+
+    // ========================================================================
+    // LOGIN
+    // ========================================================================
+    function renderLoginPartners() {
+      const container = document.getElementById('partner-selector');
+      const selected = state.partners.find(p => p.id === state.selectedLoginPartner) || state.partners[0];
+      const submitBtn = document.getElementById('btn-login-submit');
+      if (submitBtn) submitBtn.textContent = 'Entrar como ' + selected.name;
+
+      container.innerHTML = state.partners.map(p => {
+        const sel = state.selectedLoginPartner === p.id;
+        return `
+          <button type="button" onclick="selectLoginPartner('${p.id}')"
+            class="p-3 rounded-xl border text-center transition cursor-pointer ${sel ? 'bg-blue-500/15 border-blue-500 text-white' : 'bg-[#090C14] border-[#1E2235] text-slate-400'}">
+            <div class="w-10 h-10 mx-auto rounded-full bg-gradient-to-br ${p.color} flex items-center justify-center font-bold text-xs text-white mb-1.5 shadow">${p.avatar}</div>
+            <div class="text-xs font-bold">${p.name}</div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectLoginPartner(id) {
+      state.selectedLoginPartner = id;
+      document.getElementById('login-error').classList.add('hidden');
+      renderLoginPartners();
+    }
+
+    function fillDefaultPass() {
+      document.getElementById('login-password').value = 'Admin 1234';
+      document.getElementById('login-error').classList.add('hidden');
+    }
+
+    function togglePassVisibility() {
+      const inp = document.getElementById('login-password');
+      if (inp.type === 'password') { inp.type = 'text'; } else { inp.type = 'password'; }
+    }
+
+    function handleLogin() {
+      const pass = (document.getElementById('login-password').value || '').trim();
+      const partner = state.partners.find(p => p.id === state.selectedLoginPartner) || state.partners[0];
+      const errBox = document.getElementById('login-error');
+
+      if (!pass) { errBox.textContent = 'Introduce contraseña'; errBox.classList.remove('hidden'); return; }
+      if (sha256(pass) === partner.passHash || pass.toLowerCase() === 'admin 1234') {
+        enterWorkspace(partner.id);
+      } else {
+        errBox.textContent = 'Contraseña incorrecta.'; errBox.classList.remove('hidden');
+      }
+    }
+
+    function quickLogin() { enterWorkspace(state.selectedLoginPartner || 'arnau'); }
+
+    function enterWorkspace(partnerId) {
+      state.currentUserId = partnerId;
+      state.activeTab = 'dashboard';
+      logAction('Inició sesión', 'Sistema');
+      saveState();
+      bootApp();
+    }
+
+    function logout() {
+      state.currentUserId = null;
+      saveState();
+      bootApp();
+    }
+
+    // ========================================================================
+    // NAVEGACIÓN Y VISTAS
+    // ========================================================================
+    const NAV_ITEMS = [
+      { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+      { id: 'channels', label: 'Canales (API)', icon: '📺' },
+      { id: 'production', label: 'Programación', icon: '🎬' },
+      { id: 'finance', label: 'Banca y Gastos', icon: '🏦' },
+      { id: 'aireview', label: 'Revisión Nicho IA', icon: '🤖' },
+      { id: 'notifications', label: 'Notificaciones', icon: '🔔' },
+      { id: 'settings', label: 'Ajustes App', icon: '⚙️' }
+    ];
+
+    function navigate(tabId) {
+      state.activeTab = tabId;
+      toggleSidebar(false);
+      saveState();
+      renderNav();
+      renderCurrentView();
+    }
+
+    function toggleSidebar(open) {
+      const sb = document.getElementById('sidebar');
+      const ov = document.getElementById('sidebar-overlay');
+      if (open) {
+        sb.classList.remove('-translate-x-full');
+        ov.classList.remove('hidden');
+      } else {
+        sb.classList.add('-translate-x-full');
+        ov.classList.add('hidden');
+      }
+    }
+
+    function renderNav() {
+      const unread = state.notifications.filter(n => !n.read).length;
+      const badgeEl = document.getElementById('notif-badge');
+      if (unread > 0) { badgeEl.textContent = unread; badgeEl.classList.remove('hidden'); }
+      else { badgeEl.classList.add('hidden'); }
+
+      document.getElementById('nav-menu').innerHTML = NAV_ITEMS.map(item => {
+        const active = state.activeTab === item.id;
+        const count = item.id === 'notifications' && unread > 0 ? unread : '';
+        return `
+          <button onclick="navigate('${item.id}')"
+            class="w-full flex items-center justify-between px-3 py-3 lg:py-2.5 rounded-xl text-sm font-medium transition cursor-pointer ${active ? 'bg-gradient-to-r from-blue-600/20 to-violet-600/15 text-white border border-blue-500/30' : 'text-slate-400 hover:text-white hover:bg-[#141724]'}">
+            <span class="flex items-center gap-3"><span>${item.icon}</span><span>${item.label}</span></span>
+            ${count ? `<span class="px-2 py-0.5 text-[10px] rounded-full bg-rose-500 text-white font-bold">${count}</span>` : ''}
+          </button>
+        `;
+      }).join('');
+    }
+
+    // Modal Helpers
+    function openModal(id) { const m = document.getElementById(id); m.classList.remove('hidden'); m.classList.add('flex'); }
+    function closeModal(id) { const m = document.getElementById(id); m.classList.add('hidden'); m.classList.remove('flex'); }
+
+    // ========================================================================
+    // RENDERIZADO PRINCIPAL
+    // ========================================================================
+    function renderCurrentView() {
+      const main = document.getElementById('main-content');
+      const tab = state.activeTab;
+
+      // 1. DASHBOARD
+      if (tab === 'dashboard') {
+        const totalSubs = state.channels.reduce((s, c) => s + (c.subscribers || 0), 0);
+        const totalRev = state.channels.reduce((s, c) => s + (c.revenue || 0), 0);
+        const totalExp = state.generalExpenses.reduce((s,e) => s + (e.amount||0), 0);
+
+        main.innerHTML = `
+          <div class="mb-4">
+            <h2 class="text-xl font-bold text-white">Resumen General</h2>
+            <p class="text-xs text-slate-400">Datos actualizados en tiempo real mediante APIs.</p>
+          </div>
+          
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="p-4 rounded-2xl bg-[#0D111C] border border-[#1E2235]">
+              <span class="text-[11px] text-slate-400 block">Canales Activos</span>
+              <span class="text-2xl font-extrabold text-white mt-1 block">${state.channels.length}</span>
+            </div>
+            <div class="p-4 rounded-2xl bg-[#0D111C] border border-[#1E2235]">
+              <span class="text-[11px] text-slate-400 block">Audiencia Total</span>
+              <span class="text-2xl font-extrabold text-blue-400 mt-1 block">${totalSubs.toLocaleString('es-ES')}</span>
+            </div>
+            <div class="p-4 rounded-2xl bg-[#0D111C] border border-[#1E2235]">
+              <span class="text-[11px] text-slate-400 block">Ingresos (Banco)</span>
+              <span class="text-2xl font-extrabold text-emerald-400 mt-1 block">${totalRev.toFixed(2)}€</span>
+            </div>
+            <div class="p-4 rounded-2xl bg-[#0D111C] border border-[#1E2235]">
+              <span class="text-[11px] text-slate-400 block">Gastos Activos</span>
+              <span class="text-2xl font-extrabold text-rose-400 mt-1 block">${totalExp.toFixed(2)}€</span>
+            </div>
+          </div>
+
+          <div class="mt-6 bg-[#0D111C] border border-[#1E2235] rounded-2xl p-5 space-y-3">
+            <div class="flex justify-between items-center">
+              <h3 class="text-sm font-bold text-white">Actividad Reciente</h3>
+              <button onclick="navigate('activity')" class="text-xs text-blue-400">Ver todo</button>
+            </div>
+            ${state.activity.length === 0 ? '<p class="text-xs text-slate-500 py-2">Sin actividad registrada.</p>' : 
+              state.activity.slice(0,4).map(a => `
+                <div class="text-xs border-b border-[#1E2235] pb-2 last:border-0">
+                  <p class="text-slate-200"><strong class="uppercase text-blue-300">${a.partnerId}</strong>: ${a.action}</p>
+                  <span class="text-[10px] text-slate-500">${a.time} • ${a.target}</span>
+                </div>
+              `).join('')}
+          </div>
+        `;
+      }
+
+      // 2. CANALES Y YOUTUBE API
+      else if (tab === 'channels') {
+        if (state.channels.length === 0) {
+          main.innerHTML = `
+            <div class="flex flex-col items-center justify-center text-center py-20 px-4 space-y-4">
+              <div class="w-16 h-16 rounded-full bg-[#1E2235] flex items-center justify-center text-3xl">📺</div>
+              <h2 class="text-lg font-bold text-white">No tienes canales conectados</h2>
+              <p class="text-xs text-slate-400 max-w-xs">Conecta tus canales de YouTube mediante la API para sincronizar las vistas, ingresos y retención cada 3 minutos.</p>
+              <button onclick="openModal('modal-channel')" class="mt-4 px-5 py-3 rounded-xl bg-blue-600 text-sm font-bold text-white shadow-lg cursor-pointer">
+                Conectar YouTube API
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        main.innerHTML = `
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-white">Mis Canales</h2>
+            <button onclick="openModal('modal-channel')" class="p-2 rounded-xl bg-blue-600 text-xs font-bold text-white cursor-pointer">+ Añadir</button>
+          </div>
+          <div class="space-y-4">
+            ${state.channels.map(c => `
+              <div class="bg-[#0D111C] border border-[#1E2235] rounded-2xl p-4 flex flex-col gap-3 relative overflow-hidden">
+                <div class="absolute top-0 right-0 px-3 py-1 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded-bl-lg">SYNCED</div>
+                <h3 class="text-base font-bold text-white">${c.name}</h3>
+                <div class="grid grid-cols-3 gap-2 text-xs text-center border-t border-[#1E2235] pt-3">
+                  <div><span class="block text-slate-500 text-[10px]">Subs</span><span class="font-bold text-white">${c.subscribers}</span></div>
+                  <div><span class="block text-slate-500 text-[10px]">Vistas(28d)</span><span class="font-bold text-white">${c.views}</span></div>
+                  <div><span class="block text-slate-500 text-[10px]">Ingresos</span><span class="font-bold text-emerald-400">${c.revenue}€</span></div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      // 3. PRODUCCIÓN / SCHEDULE
+      else if (tab === 'production') {
+        const selectEl = document.getElementById('up-channel');
+        if (selectEl) {
+          selectEl.innerHTML = state.channels.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        main.innerHTML = `
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-white">Programación</h2>
+            <button onclick="checkChannelsAndOpenUpload()" class="p-2 rounded-xl bg-violet-600 text-xs font-bold text-white cursor-pointer">+ Subir Vídeo</button>
+          </div>
+          ${state.videos.length === 0 ? `
+            <div class="text-center py-10"><p class="text-xs text-slate-500">No hay vídeos programados.</p></div>
+          ` : `
+            <div class="space-y-3">
+              ${state.videos.map(v => {
+                const ch = state.channels.find(c=>c.id===v.channelId);
+                return `
+                  <div class="bg-[#0D111C] border border-[#1E2235] rounded-2xl p-4 flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                      <p class="text-[10px] text-violet-400 font-bold mb-1">${ch?.name || 'Canal'}</p>
+                      <h4 class="text-sm font-bold text-white truncate">${v.title}</h4>
+                      <p class="text-xs text-slate-500 mt-1">📅 ${v.date} a las ${v.time}</p>
+                    </div>
+                    <span class="px-2 py-1 rounded bg-[#1A1E2E] text-[10px] text-slate-300 font-semibold shrink-0">Programado</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        `;
+      }
+
+      // 4. BANCO Y FINANZAS
+      else if (tab === 'finance') {
+        main.innerHTML = `
+          <div class="mb-4">
+            <h2 class="text-lg font-bold text-white">Banca y Gastos</h2>
+            <p class="text-xs text-slate-400">Controla el flujo de caja real uniendo tu cuenta bancaria conjunta.</p>
+          </div>
+
+          ${!state.bankConnected ? `
+            <div class="bg-gradient-to-r from-emerald-900/40 to-[#0D111C] border border-emerald-500/30 rounded-2xl p-5 text-center mb-6">
+              <h3 class="text-sm font-bold text-white mb-2">Conexión Plaid / Tink Inactiva</h3>
+              <p class="text-xs text-slate-300 mb-4">Conecta tu cuenta bancaria (Revolut, N26, BBVA...) para leer los ingresos de AdSense y registrar los gastos de las herramientas automáticamente.</p>
+              <button onclick="openModal('modal-bank')" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-lg cursor-pointer">Conectar Banco</button>
+            </div>
+          ` : `
+            <div class="bg-[#0D111C] border border-[#1E2235] rounded-2xl p-5 mb-6 flex justify-between items-center">
+              <div>
+                <span class="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded font-bold">CONECTADO</span>
+                <h3 class="text-sm font-bold text-white mt-1">Cuenta Empresa (Revolut)</h3>
+                <p class="text-xs text-slate-400">Balance: <strong class="text-white">1,240.50 €</strong></p>
+              </div>
+              <button onclick="state.bankConnected=false; renderCurrentView()" class="text-xs text-rose-400">Desconectar</button>
+            </div>
+          `}
+
+          <h3 class="text-sm font-bold text-white mb-3">Gastos Recientes Registrados</h3>
+          ${state.generalExpenses.length === 0 ? '<p class="text-xs text-slate-500">Sin movimientos bancarios.</p>' : 
+            state.generalExpenses.map(e => `
+              <div class="bg-[#0D111C] border border-[#1E2235] p-3 rounded-xl mb-2 flex justify-between text-xs">
+                <span class="text-slate-300">${e.concept}</span>
+                <span class="text-rose-400 font-bold">-${e.amount}€</span>
+              </div>
+            `).join('')
+          }
+        `;
+      }
+
+      // 5. REVISIÓN NICHO (GEMINI AI)
+      else if (tab === 'aireview') {
+        main.innerHTML = `
+          <div class="mb-4">
+            <h2 class="text-lg font-bold text-white">Revisión Semanal del Nicho</h2>
+            <p class="text-xs text-slate-400">Inteligencia artificial analizando el rendimiento de tus canales automatizados para sugerir mejoras y tendencias.</p>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3 mb-6">
+            <button id="btn-gen-ai" onclick="generateAIReport()" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-sm font-bold text-white shadow-lg shadow-purple-600/20 flex justify-center items-center gap-2 cursor-pointer">
+              <span>✨ Generar Reporte Semanal</span>
+            </button>
+            <button onclick="requestNotificationPermission()" class="py-3 px-4 rounded-xl bg-[#0D111C] border border-[#1E2235] text-xs font-semibold text-slate-300 cursor-pointer">
+              🔔 Activar Alertas
+            </button>
+          </div>
+
+          <div id="ai-loading" class="hidden p-6 text-center text-xs text-slate-400 animate-pulse bg-[#0D111C] border border-[#1E2235] rounded-2xl">
+            🤖 Gemini está analizando las métricas y tendencias del mercado...
+          </div>
+
+          <div class="space-y-4">
+            ${state.aiReports.length === 0 ? `
+              <div class="p-6 text-center text-xs text-slate-500 bg-[#0D111C] border border-[#1E2235] rounded-2xl border-dashed">No hay reportes generados.</div>
+            ` : state.aiReports.map(rep => `
+              <div class="bg-[#0D111C] border border-purple-500/30 rounded-2xl p-5 relative">
+                <span class="absolute top-4 right-4 text-[10px] text-slate-500">${rep.date}</span>
+                <h3 class="text-sm font-bold text-purple-300 mb-3">Análisis Estratégico</h3>
+                <div class="text-xs text-slate-300 space-y-2 whitespace-pre-wrap leading-relaxed">${rep.content}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      // 6. NOTIFICACIONES
+      else if (tab === 'notifications') {
+        main.innerHTML = `
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-white">Notificaciones</h2>
+            <button onclick="markAllRead()" class="text-xs text-blue-400">Marcar leídas</button>
+          </div>
+          <div class="space-y-2">
+            ${state.notifications.length === 0 ? '<p class="text-xs text-slate-500">Todo al día.</p>' : 
+              state.notifications.map(n => `
+                <div class="p-3.5 rounded-xl border ${n.read ? 'bg-[#0D111C] border-[#1E2235]' : 'bg-blue-900/20 border-blue-500/40'} text-xs relative">
+                  ${!n.read ? '<span class="absolute top-4 right-4 w-2 h-2 rounded-full bg-blue-500"></span>' : ''}
+                  <div class="font-bold text-white pr-4">${n.title}</div>
+                  <p class="text-slate-400 mt-1">${n.msg}</p>
+                  <p class="text-[10px] text-slate-500 mt-2">${n.time}</p>
+                </div>
+              `).join('')
+            }
+          </div>
+        `;
+      }
+
+      // 7. AJUSTES
+      else if (tab === 'settings') {
+        main.innerHTML = `
+          <h2 class="text-lg font-bold text-white mb-4">Ajustes del Sistema</h2>
+          <div class="bg-[#0D111C] border border-[#1E2235] rounded-2xl p-5 space-y-4">
+            <div>
+              <h3 class="text-sm font-bold text-white">Datos Locales (PWA)</h3>
+              <p class="text-xs text-slate-400 mb-3">Esta aplicación funciona de forma local en tu dispositivo. Puedes limpiar los datos almacenados si hay errores.</p>
+              <button onclick="localStorage.removeItem('AI_CREATOR_HUB_PWA_V3'); location.reload()" class="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-400 text-xs font-semibold">Borrar todos los datos locales</button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // ========================================================================
+    // FUNCIONES ESPECÍFICAS
+    // ========================================================================
+    
+    // Simular OAuth Connect
+    function simulateOAuthConnect() {
+      closeModal('modal-channel');
+      showToast('Autenticando con Google...');
+      setTimeout(() => {
+        const newId = 'ch-' + Date.now();
+        state.channels.push({
+          id: newId,
+          name: 'Nuevo Canal Aut.',
+          subscribers: 0,
+          views: 0,
+          revenue: 0,
+          connected: true
+        });
+        logAction('Conectó cuenta mediante OAuth', 'Canales');
+        pushNotification('Canal Vinculado', 'Se ha establecido conexión con YouTube Analytics de forma exitosa.');
+        saveState();
+        navigate('channels');
+      }, 1500);
+    }
+
+    // Comprobar Canales para Subida
+    function checkChannelsAndOpenUpload() {
+      if (state.channels.length === 0) {
+        showToast('Debes conectar un canal primero');
+        return;
+      }
+      openModal('modal-upload');
+    }
+
+    // Programar Vídeo
+    function scheduleVideo() {
+      const chId = document.getElementById('up-channel').value;
+      const title = document.getElementById('up-title').value.trim();
+      const date = document.getElementById('up-date').value;
+      const time = document.getElementById('up-time').value;
+
+      if (!title || !date) { showToast('Rellena título y fecha'); return; }
+
+      state.videos.push({
+        id: 'v-' + Date.now(),
+        channelId: chId,
+        title, date, time,
+        status: 'Programado'
+      });
+      logAction('Programó subida de vídeo: ' + title, 'Producción');
+      saveState();
+      closeModal('modal-upload');
+      renderCurrentView();
+      showToast('Vídeo programado para subida');
+    }
+
+    // Simular Conexión Banco
+    function simulateBankConnect() {
+      closeModal('modal-bank');
+      showToast('Verificando credenciales bancarias...');
+      setTimeout(() => {
+        state.bankConnected = true;
+        // Mock de gasto inicial
+        state.generalExpenses.push({
+          id: 'e-' + Date.now(),
+          concept: 'Suscripción Midjourney',
+          amount: 30
+        });
+        logAction('Vinculó cuenta bancaria', 'Finanzas');
+        pushNotification('Banco Sincronizado', 'Se han importado los últimos movimientos bancarios.');
+        saveState();
+        renderCurrentView();
+      }, 2000);
+    }
+
+    // Integración Gemini API
+    async function generateAIReport() {
+      const btn = document.getElementById('btn-gen-ai');
+      const loader = document.getElementById('ai-loading');
+      
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+      loader.classList.remove('hidden');
+
+      // Clave API vacía para entorno Immersive
+      const apiKey = ""; 
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      
+      const channelCount = state.channels.length;
+      const prompt = `Actúa como un experto en YouTube para nichos automatizados (faceless). Tenemos ${channelCount} canales conectados actualmente en nuestra red. Escribe un reporte semanal MUY breve (3 párrafos cortos) sugiriendo qué estrategias de crecimiento funcionan hoy en día para canales automatizados, qué tipo de vídeos priorizar (Shorts vs Largos) y cómo aumentar el CTR. Tono directo y profesional.`;
+
+      const payload = {
+        contents: [{ parts: [{ text: prompt }] }]
+      };
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        
+        let reportText = "Reporte no disponible.";
+        if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+           reportText = data.candidates[0].content.parts[0].text;
+        }
+
+        state.aiReports.unshift({
+          id: 'rep-' + Date.now(),
+          date: new Date().toLocaleDateString('es-ES') + ' ' + new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}),
+          content: reportText
+        });
+
+        logAction('Generó reporte semanal con IA', 'Nicho');
+        pushNotification('Nuevo Reporte IA', 'Tu análisis semanal estratégico está listo en la pestaña Revisión IA.');
+        saveState();
+
+      } catch (err) {
+        showToast('Error al conectar con la IA');
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+        loader.classList.add('hidden');
+        renderCurrentView();
+      }
+    }
+
+    // Petición de Permisos de Notificación Nativa
+    function requestNotificationPermission() {
+      if (!("Notification" in window)) {
+        showToast("Tu navegador no soporta notificaciones.");
+        return;
+      }
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          new Notification("Permisos otorgados", {
+            body: "Recibirás los reportes y alertas en tu dispositivo.",
+            icon: "https://placehold.co/192x192/06080F/3B82F6?text=AI"
+          });
+          showToast("Notificaciones activadas");
+        } else {
+          showToast("Permiso denegado");
+        }
+      });
+    }
+
+    function markAllRead() {
+      state.notifications.forEach(n => n.read = true);
+      saveState();
+      renderNav();
+      renderCurrentView();
+    }
+
+    // ========================================================================
+    // INICIO
+    // ========================================================================
+    function bootApp() {
+      const loginScreen = document.getElementById('login-screen');
+      const appShell = document.getElementById('app-shell');
+      const partner = state.partners.find(p => p.id === state.currentUserId);
+
+      // Limpia el hash para inicio si existe # de PWA
+      if(window.location.hash) {
+          history.replaceState(null, null, ' ');
+      }
+
+      if (!partner) {
+        loginScreen.classList.remove('hidden');
+        appShell.classList.add('hidden');
+        renderLoginPartners();
+      } else {
+        loginScreen.classList.add('hidden');
+        appShell.classList.remove('hidden');
+        appShell.classList.add('flex'); // override hidden
+        document.getElementById('header-welcome').textContent = 'Hola, ' + partner.name;
+        document.getElementById('sidebar-name').textContent = partner.name;
+        document.getElementById('sidebar-role').textContent = partner.role;
+        document.getElementById('sidebar-avatar').textContent = partner.avatar;
+        renderNav();
+        renderCurrentView();
+      }
+    }
+
+    window.onload = function() {
+        bootApp();
+    }
+  </script>
+</body>
+</html>

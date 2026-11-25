@@ -1848,14 +1848,90 @@ PROYECCIONES CALCULADAS: ${JSON.stringify(projections)}`);
       </div></article>`;
   }
 
-  function dayOptions(selected) {
-    const out = [], seen = new Set(), base = new Date(); base.setHours(0, 0, 0, 0);
-    const label = (d) => d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-    for (let i = 0; i < 180; i++) { const d = new Date(base); d.setDate(base.getDate() + i); const k = localDay(d); seen.add(k); out.push([k, label(d)]); }
-    if (selected && !seen.has(selected)) out.unshift([selected, label(new Date(selected + 'T00:00'))]);
-    return out.map(([k, l]) => `<option value="${k}" ${k === selected ? 'selected' : ''}>${l}</option>`).join('');
-  }
+  function initDayPicker(modalEl, initialDay) {
+    const wrap = modalEl.querySelector('#day-picker');
+    const parse = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+    const today = localDay();
+    let selected = initialDay;
+    let view = monthStart(parse(selected));
+    let open = false;
 
+    function render() {
+      const selDate = parse(selected);
+      const label = cap(selDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+      const title = cap(view.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }));
+      const start = new Date(view);
+      start.setDate(1 - ((view.getDay() + 6) % 7));
+
+      let cells = '';
+      for (let i = 0; i < 42; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        const iso = localDay(d);
+        const inMonth = d.getMonth() === view.getMonth();
+        const isSel = iso === selected;
+        const isToday = iso === today;
+        const cls = isSel
+          ? 'bg-brand text-ink font-extrabold'
+          : isToday
+            ? 'border border-brand text-white font-semibold hover:bg-white/10'
+            : inMonth
+              ? 'text-white hover:bg-white/10'
+              : 'text-white/30 hover:bg-white/5';
+        cells += `<button type="button" data-dp-day="${iso}" class="w-8 h-8 mx-auto rounded-full text-xs flex items-center justify-center transition ${cls}">${d.getDate()}</button>`;
+      }
+
+      wrap.innerHTML = `
+        <input type="hidden" name="day" value="${esc(selected)}">
+        <button type="button" data-dp-toggle class="input flex items-center justify-between text-left cursor-pointer ${open ? 'border-brand ring-1 ring-brand' : ''}">
+          <span>${esc(label)}</span>
+          <span class="muted text-xs">📅</span>
+        </button>
+        ${open ? `
+        <div class="absolute left-0 mt-1.5 w-72 rounded-2xl bg-[#2B2823] border border-white/15 shadow-2xl p-3.5 z-50 select-none">
+          <div class="flex items-center justify-between mb-2.5">
+            <span class="text-xs font-bold text-white">${esc(title)}</span>
+            <div class="flex items-center gap-1">
+              <button type="button" data-dp-nav="-1" class="icon-btn w-7 h-7 flex items-center justify-center" aria-label="Mes anterior">◀</button>
+              <button type="button" data-dp-nav="1" class="icon-btn w-7 h-7 flex items-center justify-center" aria-label="Mes siguiente">▶</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-7 text-center text-[10px] font-bold subtle mb-1">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((w) => `<span>${w}</span>`).join('')}</div>
+          <div class="grid grid-cols-7 gap-y-1 text-center">${cells}</div>
+        </div>` : ''}`;
+
+      wrap.querySelector('[data-dp-toggle]').onclick = (e) => {
+        e.stopPropagation();
+        open = !open;
+        if (open) view = monthStart(parse(selected));
+        render();
+      };
+      wrap.querySelectorAll('[data-dp-nav]').forEach((b) => {
+        b.onclick = (e) => {
+          e.stopPropagation();
+          view = new Date(view.getFullYear(), view.getMonth() + Number(b.dataset.dpNav), 1);
+          render();
+        };
+      });
+      wrap.querySelectorAll('[data-dp-day]').forEach((b) => {
+        b.onclick = (e) => {
+          e.stopPropagation();
+          selected = b.dataset.dpDay;
+          view = monthStart(parse(selected));
+          open = false;
+          render();
+        };
+      });
+    }
+
+    modalEl.addEventListener('click', (e) => {
+      if (open && !wrap.contains(e.target)) { open = false; render(); }
+    });
+
+    render();
+  }
+    
   function openEventModal(ev, resps, presetDay = null) {
     const start = ev ? new Date(ev.starts_at) : null;
     const day = start ? localDay(start) : (presetDay && presetDay >= localDay() ? presetDay : localDay());
@@ -1866,7 +1942,7 @@ PROYECCIONES CALCULADAS: ${JSON.stringify(projections)}`);
       <form id="ev-form" class="space-y-3 text-xs">
         <div><label class="label req">Título</label><input name="titulo" required maxlength="120" class="input" value="${esc(ev?.title || '')}" placeholder="Ej: Revisión mensual de canales"></div>
         <div><label class="label">Descripción</label><textarea name="description" rows="3" maxlength="2000" class="input" placeholder="Orden del día, enlaces…">${esc(ev?.description || '')}</textarea></div>
-        <div><label class="label req">Día</label><select name="day" class="input">${dayOptions(day)}</select></div>
+        <div><label class="label req">Día</label><div id="day-picker" class="relative"></div></div>
         <div class="grid grid-cols-3 gap-3">
           <div><label class="label req">Hora</label><select name="hh" class="input">${Array.from({ length: 24 }, (_, i) => `<option value="${i}" ${i === hh ? 'selected' : ''}>${String(i).padStart(2, '0')}</option>`).join('')}</select></div>
           <div><label class="label req">Minutos</label><select name="mm" class="input">${[0, 15, 30, 45].map((x) => `<option value="${x}" ${x === mm ? 'selected' : ''}>${String(x).padStart(2, '0')}</option>`).join('')}</select></div>
@@ -1881,6 +1957,7 @@ PROYECCIONES CALCULADAS: ${JSON.stringify(projections)}`);
         ${ev ? `<div class="card-inner p-3"><p class="label">Estado de confirmación</p><div class="flex flex-wrap gap-3">${(ev.participants ?? []).map((pid) => { const r = resps.find((x) => x.user_id === pid)?.status ?? 'pendiente'; return `<span>${esc(partnerName(pid))}: ${RESP[r][0]} ${RESP[r][1]}</span>`; }).join('')}</div></div>` : ''}
         <div class="flex gap-2 pt-2">${ev ? '<button type="button" id="ev-del" class="btn btn-danger">Eliminar</button>' : ''}<button class="btn btn-primary flex-1 py-2.5">${ev ? 'Guardar cambios' : 'Crear evento'}</button></div>
       </form>`);
+    initDayPicker(m, day);
     const form = m.querySelector('#ev-form');
     const warn = () => m.querySelector('#urgent-warn').classList.toggle('hidden', form.priority.value !== 'urgente' || (ev?.urgent_notified && ev.priority === 'urgente'));
     form.priority.onchange = warn; warn();

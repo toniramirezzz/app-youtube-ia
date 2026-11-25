@@ -487,7 +487,7 @@ details > summary::-webkit-details-marker { display: none; }
   // ===================================================================
   // 5. ACCESO: contraseña → 2FA TOTP (Supabase MFA) → primer acceso
   // ===================================================================
-  const L = { partner: LS.get('hub.partner', PARTNERS[0].slug), step: 'credentials', factorId: null, enroll: null };
+ const L = { partner: LS.get('hub.partner', PARTNERS[0].slug), step: 'credentials', email: '', otpSentFor: null, sendingOtp: false, verifyingOtp: false };
 
   function showLogin(err = '') {
     $('#app-shell').classList.add('hidden'); $('#app-shell').classList.remove('flex');
@@ -496,30 +496,62 @@ details > summary::-webkit-details-marker { display: none; }
   }
   const errorBox = (err) => err ? `<div class="p-3 rounded-xl bg-rose-500/15 border border-rose-400/40 text-rose-200 text-xs">${esc(err)}</div>` : '';
   const backLink = '<button type="button" id="btn-back" class="text-[11px] muted hover:text-white underline underline-offset-2">Cambiar de perfil</button>';
-  function bindBack() { $('#btn-back')?.addEventListener('click', async () => { await sb.auth.signOut(); L.step = 'credentials'; showLogin(); }); }
-  const traduceAuth = (m = '') => /invalid login/i.test(m) ? 'Contraseña incorrecta.' : /invalid totp|invalid code|expired/i.test(m) ? 'Código incorrecto o caducado. Prueba con el código actual.' : /same.*password|different from the old/i.test(m) ? 'La nueva contraseña debe ser distinta de la anterior.' : m;
+  function bindBack() {
+    $('#btn-back')?.addEventListener('click', async () => {
+      sessionStorage.removeItem('hub.otp_ok');
+      L.otpSentFor = null; L.sendingOtp = false; L.verifyingOtp = false;
+      await sb.auth.signOut();
+      L.step = 'credentials';
+      showLogin();
+    });
+  }
+  const traduceAuth = (m = '') =>
+    /invalid login/i.test(m) ? 'Contraseña incorrecta.' :
+    /invalid.*token|invalid.*otp|invalid code|expired/i.test(m) ? 'Código incorrecto o caducado. Revisa tu Gmail o pide uno nuevo.' :
+    /rate limit|security purposes/i.test(m) ? 'Espera unos segundos antes de pedir otro código.' :
+    /same.*password|different from the old/i.test(m) ? 'La nueva contraseña debe ser distinta de la anterior.' : m;
 
   async function fetchStatus() { return must(await sb.rpc('session_status')); }
 
-  /** Decide el siguiente paso según el nivel de seguridad de la sesión */
+  /** Decide el siguiente paso: credenciales -> código Gmail -> primer acceso -> panel */
   async function routeAuth() {
-    const { data: aal, error } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (L.verifyingOtp) return;
+    const { data: { session }, error } = await sb.auth.getSession();
     if (error) throw error;
-    if (aal.currentLevel !== 'aal2') {
-      const { data: f, error: e2 } = await sb.auth.mfa.listFactors();
-      if (e2) throw e2;
-      const verified = (f.totp ?? []).find((x) => x.status === 'verified');
-      if (verified) { L.factorId = verified.id; L.step = 'mfa'; return showLogin(); }
-      // Sin 2FA todavía → primer acceso: configurar Google Authenticator
-      for (const x of (f.all ?? []).filter((x) => x.status !== 'verified')) await sb.auth.mfa.unenroll({ factorId: x.id });
-      const { data: en, error: e3 } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Creator Hub ' + new Date().toLocaleDateString('es-ES') });
-      if (e3) throw e3;
-      L.enroll = en; L.factorId = en.id; L.step = 'enroll';
+    if (!session) {
+      sessionStorage.removeItem('hub.otp_ok');
+      L.otpSentFor = null; L.step = 'credentials';
       return showLogin();
     }
+
+    L.email = session.user.email;
+
+    // 1. Verificar código de un solo uso enviado a Gmail
+    if (sessionStorage.getItem('hub.otp_ok') !== session.user.id) {
+      L.step = 'otp';
+      showLogin();
+      if (!L.sendingOtp && L.otpSentFor !== session.user.id) {
+        L.sendingOtp = true;
+        const { error: otpErr } = await sb.auth.signInWithOtp({
+          email: L.email,
+          options: { shouldCreateUser: false }
+        });
+        L.sendingOtp = false;
+        if (otpErr) return renderLogin(traduceAuth(otpErr.message));
+        L.otpSentFor = session.user.id;
+      }
+      return;
+    }
+
+    // 2. Comprobar perfil de socio y primer acceso
     const st = await fetchStatus();
-    if (!st?.profile) { await sb.auth.signOut(); L.step = 'credentials'; return showLogin('Este usuario no está dado de alta como socio.'); }
-    if (st.verified) return enterApp(st);
+    if (!st?.profile) {
+      sessionStorage.removeItem('hub.otp_ok');
+      await sb.auth.signOut();
+      L.step = 'credentials';
+      return showLogin('Este usuario no está dado de alta como socio.');
+    }
+    if (!st.profile.must_change_password && st.profile.phone) return enterApp(st);
     L.step = 'firstaccess'; L.mustChange = st.profile.must_change_password; L.phone = st.profile.phone || '';
     showLogin();
   }
@@ -538,7 +570,7 @@ details > summary::-webkit-details-marker { display: none; }
       box.innerHTML = `
         <div class="flex items-center justify-between">
           <div><h2 class="text-base font-bold">Acceso de Socios</h2><p class="text-xs muted">Escoge tu perfil para entrar</p></div>
-          <span class="badge b-orange">🔒 2FA</span>
+          <span class="badge b-orange">🔒 2FA Email</span>
         </div>
         <div><label class="label">1. Selecciona tu perfil</label>
           <div class="grid grid-cols-3 gap-2.5">${PARTNERS.map((x) => `
@@ -551,7 +583,7 @@ details > summary::-webkit-details-marker { display: none; }
               <button type="button" id="toggle-pass" class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] muted hover:text-white">Ver</button></div></div>
           ${errorBox(err)}
           <button class="btn btn-primary w-full py-2.5 text-sm">Entrar como ${esc(p.name)}</button>
-          <p class="text-[10px] subtle text-center">Después te pediremos el código de Google Authenticator / Authy.</p>
+          <p class="text-[10px] subtle text-center">Te enviaremos un código de 6 dígitos a tu Gmail.</p>
         </form>`;
       box.querySelectorAll('[data-partner]').forEach((b) => { b.onclick = () => { L.partner = b.dataset.partner; LS.set('hub.partner', L.partner); renderLogin(); }; });
       $('#toggle-pass').onclick = (e) => { const i = $('#login-password'); i.type = i.type === 'password' ? 'text' : 'password'; e.target.textContent = i.type === 'password' ? 'Ver' : 'Ocultar'; };
@@ -566,69 +598,51 @@ details > summary::-webkit-details-marker { display: none; }
       return;
     }
 
-    if (L.step === 'enroll') {
+    if (L.step === 'otp') {
       box.innerHTML = `
-        <div class="flex items-center gap-2 text-[10px] font-semibold"><span class="badge b-orange">1. Activar 2FA</span><span class="badge b-gray">2. Contraseña y móvil</span></div>
-        <div><h2 class="text-base font-bold">Primer acceso: activa la verificación en dos pasos</h2>
-          <p class="text-xs muted mt-1">Abre <strong class="text-white">Google Authenticator</strong> o <strong class="text-white">Authy</strong> en tu móvil, pulsa “+” y escanea este código QR.</p></div>
-        <div class="qr-box"><img id="qr-img" alt="Código QR para la app de autenticación"></div>
-        <details class="text-xs"><summary class="muted underline cursor-pointer">¿No puedes escanear? Introduce la clave a mano</summary>
-          <div class="mt-2 flex gap-2 items-center"><code class="card-inner px-2 py-1.5 font-mono text-[11px] break-all flex-1">${esc(L.enroll.totp.secret)}</code><button type="button" id="copy-secret" class="icon-btn">Copiar</button></div></details>
-        <form id="f-enroll" class="space-y-4">
-          <div><label class="label" for="totp-code">Código de 6 dígitos que muestra la app</label>
-            <input id="totp-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" required class="input text-center text-2xl tracking-[0.5em] font-bold" /></div>
-          ${errorBox(err)}
-          <button class="btn btn-primary w-full py-2.5 text-sm">Activar y continuar</button>
-          <div class="text-center">${backLink}</div>
-        </form>`;
-      $('#qr-img').src = L.enroll.totp.qr_code;
-      $('#copy-secret').onclick = () => copyText(L.enroll.totp.secret, 'Clave copiada');
-      $('#f-enroll').onsubmit = async (e) => {
-        e.preventDefault();
-        const btn = e.submitter; btn.disabled = true; btn.textContent = 'Verificando…';
-        const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: L.factorId, code: e.target.code.value.trim() });
-        if (error) return renderLogin(traduceAuth(error.message));
-        try { await routeAuth(); } catch (er) { renderLogin(traduceAuth(er.message)); }
-      };
-      bindBack();
-      setTimeout(() => $('#totp-code')?.focus(), 50);
-      return;
-    }
-
-    if (L.step === 'mfa') {
-      box.innerHTML = `
-        <div><h2 class="text-base font-bold">Verificación en dos pasos</h2>
-          <p class="text-xs muted mt-1">Introduce el código de 6 dígitos de <strong class="text-white">Google Authenticator / Authy</strong> (cuenta “Creator Hub”).</p></div>
-        <form id="f-mfa" class="space-y-4">
-          <input id="totp-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" required class="input text-center text-2xl tracking-[0.5em] font-bold" />
+        <div><h2 class="text-base font-bold">Verifica tu acceso</h2>
+          <p class="text-xs muted mt-1">Hemos enviado un código de 6 dígitos a <strong class="text-white">${esc(L.email)}</strong>.</p></div>
+        <form id="f-otp" class="space-y-4">
+          <input id="otp-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" required class="input text-center text-2xl tracking-[0.5em] font-bold" />
           ${errorBox(err)}
           <button class="btn btn-primary w-full py-2.5 text-sm">Verificar y entrar</button>
-          <div class="flex justify-between items-center"><span class="text-[10px] subtle">¿Perdiste el móvil? Avisa al admin.</span>${backLink}</div>
+          <div class="flex justify-between items-center text-[11px]">
+            <button type="button" id="resend-otp" class="muted hover:text-white underline underline-offset-2">Reenviar código</button>
+            ${backLink}
+          </div>
         </form>`;
-      $('#f-mfa').onsubmit = async (e) => {
+      $('#f-otp').onsubmit = async (e) => {
         e.preventDefault();
         const btn = e.submitter; btn.disabled = true; btn.textContent = 'Verificando…';
-        const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: L.factorId, code: e.target.code.value.trim() });
-        if (error) return renderLogin(traduceAuth(error.message));
+        L.verifyingOtp = true;
+        const { data, error } = await sb.auth.verifyOtp({ email: L.email, token: e.target.code.value.trim(), type: 'email' });
+        if (error) { L.verifyingOtp = false; return renderLogin(traduceAuth(error.message)); }
+        sessionStorage.setItem('hub.otp_ok', data.user.id);
+        L.verifyingOtp = false;
         try { await routeAuth(); } catch (er) { renderLogin(traduceAuth(er.message)); }
       };
+      $('#resend-otp').onclick = async () => {
+        const { error } = await sb.auth.signInWithOtp({ email: L.email, options: { shouldCreateUser: false } });
+        if (error) return renderLogin(traduceAuth(error.message));
+        renderLogin('Código reenviado. Revisa tu bandeja o Spam.');
+      };
       bindBack();
-      setTimeout(() => $('#totp-code')?.focus(), 50);
+      setTimeout(() => $('#otp-code')?.focus(), 50);
       return;
     }
 
     if (L.step === 'firstaccess') {
       box.innerHTML = `
-        <div class="flex items-center gap-2 text-[10px] font-semibold"><span class="badge b-orange">1. Activar 2FA ✓</span><span class="badge b-orange">2. Contraseña y móvil</span></div>
+        <div class="flex items-center gap-2 text-[10px] font-semibold"><span class="badge b-orange">1. Email verificado ✓</span><span class="badge b-orange">2. Contraseña y móvil</span></div>
         <div><h2 class="text-base font-bold">Completa tu perfil</h2>
-          <p class="text-xs muted mt-1">Es obligatorio cambiar la contraseña inicial y registrar tu móvil antes de acceder al panel.</p></div>
+          <p class="text-xs muted mt-1">Confirma tu contraseña y número de móvil antes de entrar al panel.</p></div>
         <form id="f-first" class="space-y-3">
           ${L.mustChange ? `
           <div><label class="label" for="np1">Nueva contraseña</label><input id="np1" name="p1" type="password" autocomplete="new-password" minlength="12" required class="input" /></div>
           <div><label class="label" for="np2">Repite la contraseña</label><input id="np2" name="p2" type="password" autocomplete="new-password" minlength="12" required class="input" /></div>
           <p class="text-[11px] muted">Mínimo 12 caracteres, con letras y números.</p>` : ''}
           <div><label class="label" for="phone">Número de móvil (formato internacional)</label>
-            <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+34 600 111 222" value="${esc(L.phone || '+34 ')}" required class="input" /></div>
+            <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+34600111222" value="${esc(L.phone || '+34')}" required class="input" /></div>
           ${errorBox(err)}
           <button class="btn btn-primary w-full py-2.5 text-sm">Guardar y entrar</button>
         </form>`;
@@ -646,14 +660,14 @@ details > summary::-webkit-details-marker { display: none; }
             const { error } = await sb.auth.updateUser({ password: f.p1.value });
             if (error) throw error;
           }
-          const { error: e2 } = await sb.rpc('complete_first_access', { p_phone: f.phone.value });
+          const cleanPhone = f.phone.value.replace(/[\s\-()]/g, '').trim();
+          const { error: e2 } = await sb.rpc('complete_first_access', { p_phone: cleanPhone });
           if (e2) throw e2;
           await routeAuth();
         } catch (er) { renderLogin(traduceAuth(er.message)); }
       };
     }
   }
-
   // ===================================================================
   // 6. ESTRUCTURA, NAVEGACIÓN Y ARRANQUE
   // ===================================================================

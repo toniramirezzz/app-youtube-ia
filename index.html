@@ -551,9 +551,7 @@ details > summary::-webkit-details-marker { display: none; }
       L.step = 'credentials';
       return showLogin('Este usuario no está dado de alta como socio.');
     }
-    if (!st.profile.must_change_password && st.profile.phone) return enterApp(st);
-    L.step = 'firstaccess'; L.mustChange = st.profile.must_change_password; L.phone = st.profile.phone || '';
-    showLogin();
+    return enterApp(st);
   }
 
   function renderLogin(err) {
